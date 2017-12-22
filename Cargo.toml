@@ -8,5 +8,6 @@ futures = "0.1"
 tokio-core = "0.1"
 hyper = "0.11"
 hyper-tls = "0.1.2"
-rust-crypto = "*"
-rustc-serialize = "*"
+rust-crypto = "0.2.36"
+rustc-serialize = "0.3.24"
+
