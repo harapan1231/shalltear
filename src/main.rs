@@ -1,7 +1,7 @@
 
 extern crate hmac;
 extern crate sha2;
-extern crate rustc_serialize;
+extern crate hex;
 
 extern crate futures;
 extern crate tokio_core;
@@ -12,7 +12,7 @@ use std::io::{self, Write};
 use std::time::{SystemTime, UNIX_EPOCH};
 use sha2::Sha256;
 use hmac::{Hmac, Mac};
-use rustc_serialize::hex::ToHex;
+use hex::ToHex;
 
 use futures::{Future, Stream};
 use tokio_core::reactor::Core;
@@ -41,7 +41,8 @@ fn main() {
     let msg = format!("{}{}{}", access_nonce.to_string().as_str(), uri, body);
     let mut hmac = Hmac::<Sha256>::new(secret_key.as_bytes()).unwrap();
     hmac.input(msg.as_bytes());
-    let access_signature = hmac.result().code().to_hex();
+    let mut access_signature = String::new();
+    hmac.result().code().write_hex(&mut access_signature).unwrap();
 
     let mut req = Request::new(Method::Get, uri.parse().unwrap());
     req.headers_mut().set(AccessKey(access_key.to_string()));
