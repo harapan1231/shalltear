@@ -1,7 +1,7 @@
 
 extern crate futures;
 extern crate tokio_core;
-extern crate hyper;
+#[macro_use] extern crate hyper;
 extern crate hyper_tls;
 
 use std::io::{self, Write};
@@ -10,7 +10,9 @@ use futures::{Future, Stream};
 
 use tokio_core::reactor::Core;
 
-use hyper::Client;
+use hyper::Method;
+use hyper::client::{Client, Request};
+header! { (AccessKey, "ACCESS-KEY") => [String] }
 use hyper_tls::HttpsConnector;
 
 fn main() {
@@ -23,7 +25,10 @@ fn main() {
 
     let uri = "https://httpbin.org/ip".parse().unwrap();
 
-    let work = client.get(uri).and_then(|res| {
+    let mut req = Request::new(Method::Get, uri);
+    req.headers_mut().set(AccessKey("test-access-key".to_string()));
+
+    let work = client.request(req).and_then(|res| {
         println!("Response: {}", res.status());
 
         res.body().for_each(|chunk| {
