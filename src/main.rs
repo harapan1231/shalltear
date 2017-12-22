@@ -1,6 +1,6 @@
 
-extern crate hmac;
-extern crate sha2;
+extern crate crypto;
+extern crate rustc_serialize;
 
 extern crate futures;
 extern crate tokio_core;
@@ -9,8 +9,10 @@ extern crate hyper_tls;
 
 use std::io::{self, Write};
 use std::time::{SystemTime, UNIX_EPOCH};
-use sha2::Sha256;
-use hmac::{Hmac, Mac};
+use crypto::sha2::Sha256;
+use crypto::hmac::Hmac;
+use crypto::mac::Mac;
+use rustc_serialize::hex::ToHex;
 
 use futures::{Future, Stream};
 use tokio_core::reactor::Core;
@@ -37,9 +39,9 @@ fn main() {
     let access_nonce = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
 
     let msg = format!("{}{}{}", access_nonce.to_string().as_str(), uri, body);
-    let mut hmac = Hmac::<Sha256>::new(secret_key.as_bytes()).unwrap();
+    let mut hmac = Hmac::new(Sha256::new(), secret_key.as_bytes());
     hmac.input(msg.as_bytes());
-    let access_signature = hmac.result().code().iter().map(|b| format!("{:02X}", b)).collect();
+    let access_signature = hmac.result().code().to_hex();
     println!("{}", access_signature);
 
     let mut req = Request::new(Method::Get, uri.parse().unwrap());
