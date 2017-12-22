@@ -42,7 +42,6 @@ fn main() {
     let mut hmac = Hmac::new(Sha256::new(), secret_key.as_bytes());
     hmac.input(msg.as_bytes());
     let access_signature = hmac.result().code().to_hex();
-    println!("{}", access_signature);
 
     let mut req = Request::new(Method::Get, uri.parse().unwrap());
     req.headers_mut().set(AccessKey(access_key.to_string()));
