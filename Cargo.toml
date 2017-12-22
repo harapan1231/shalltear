@@ -1,7 +1,7 @@
 [package]
 name = "shalltear"
 version = "0.1.0"
-authors = ["harapan1231 <senang.harapan@gmail.com>"]
+authors = ["#name <#email>"]
 
 [dependencies]
 futures = "0.1"
