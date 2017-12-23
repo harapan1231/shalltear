@@ -1,4 +1,5 @@
-[coincheck.jp]
+[[access_configs]]
+id = ""
 host = ""
 accecc_key = ""
 secret_key = ""
