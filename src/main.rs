@@ -36,8 +36,22 @@ fn main() {
     let client = Client::configure()
         .connector(HttpsConnector::new(4, &handle).unwrap())
         .build(&handle);
+    let req = get_req("coincheck");
+    let work = client.request(req).and_then(|res| {
+        println!("Response: {}", res.status());
 
-    let access_config = get_access_config("coincheck").unwrap();
+        res.body().for_each(|chunk| {
+            io::stdout()
+                .write_all(&chunk)
+                .map_err(From::from)
+        })
+    });
+    core.run(work).unwrap();
+}
+
+fn get_req(service_id: &str) -> Request {
+
+    let access_config = get_access_config(service_id).unwrap();
     let uri = format!("https://{}{}", access_config.host, "/api/accounts/balance");
     let body = "";
     let access_key = access_config.access_key;
@@ -52,20 +66,12 @@ fn main() {
     hmac.result().code().write_hex(&mut access_signature).unwrap();
 
     let mut req = Request::new(Method::Get, uri.parse().unwrap());
+
     req.headers_mut().set(AccessKey(access_key.to_string()));
     req.headers_mut().set(AccessNonce(access_nonce));
     req.headers_mut().set(AccessSignature(access_signature));
 
-    let work = client.request(req).and_then(|res| {
-        println!("Response: {}", res.status());
-
-        res.body().for_each(|chunk| {
-            io::stdout()
-                .write_all(&chunk)
-                .map_err(From::from)
-        })
-    });
-    core.run(work).unwrap();
+    return req
 }
 
 #[derive(Deserialize)]
