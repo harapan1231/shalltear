@@ -29,19 +29,6 @@ header! { (AccessNonce, "ACCESS-NONCE") => [u64] }
 header! { (AccessSignature, "ACCESS-SIGNATURE") => [String] }
 use hyper_tls::HttpsConnector;
 
-#[derive(Deserialize)]
-struct Config {
-    access_configs: Vec<AccessConfig>,
-}
-
-#[derive(Deserialize)]
-struct AccessConfig {
-    id: String,
-    host: String,
-    access_key: String,
-    secret_key: String,
-}
-
 fn main() {
     let mut core = Core::new().unwrap();
     let handle = core.handle();
@@ -50,17 +37,11 @@ fn main() {
         .connector(HttpsConnector::new(4, &handle).unwrap())
         .build(&handle);
 
-    let mut file = File::open("Shalltear.toml").expect("File not found");
-    let mut contents = String::new();
-    file.read_to_string(&mut contents).expect("Something went wrong reading the file");
-
-    let config: Config = toml::from_str(contents.as_str()).expect("Failed to create toml string");
-    let access_config: &AccessConfig = &config.access_configs[0];
-
-    let uri = format!("https://{}{}", &access_config.host, "/api/accounts/balance");
+    let access_config = get_access_config("coincheck").unwrap();
+    let uri = format!("https://{}{}", access_config.host, "/api/accounts/balance");
     let body = "";
-    let access_key = &access_config.access_key;
-    let secret_key = &access_config.secret_key;
+    let access_key = access_config.access_key;
+    let secret_key = access_config.secret_key;
 
     let access_nonce = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
 
@@ -87,3 +68,25 @@ fn main() {
     core.run(work).unwrap();
 }
 
+#[derive(Deserialize)]
+struct Config {
+    access_configs: Vec<AccessConfig>,
+}
+
+#[derive(Deserialize)]
+struct AccessConfig {
+    id: String,
+    host: String,
+    access_key: String,
+    secret_key: String,
+}
+
+fn get_access_config(id: &str) -> Option<AccessConfig> {
+
+    let mut file = File::open("Shalltear.toml").expect("File not found");
+    let mut contents = String::new();
+    file.read_to_string(&mut contents).expect("Something went wrong reading the file");
+
+    let config: Config = toml::from_str(contents.as_str()).expect("Failed to create toml string");
+    config.access_configs.into_iter().find(|x| x.id == id)
+}
