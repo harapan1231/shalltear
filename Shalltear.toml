@@ -1,10 +1,10 @@
 [[access_configs]]
 id = "bittrex"
-access_key = ""
+api_key = ""
 secret_key = ""
 
 [[access_configs]]
 id = "coincheck"
-access_key = ""
+api_key = ""
 secret_key = ""
 

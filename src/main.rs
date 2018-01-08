@@ -55,10 +55,10 @@ fn get_req(service_id: &str) -> Request {
     let nonce = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
 
     let access_config = get_access_config(service_id).unwrap();
-    let access_key = access_config.access_key;
+    let api_key = access_config.api_key;
     let secret_key = access_config.secret_key;
 
-    let url = get_url(service_id, access_key.as_str(), nonce.to_string().as_str());
+    let url = get_url(service_id, api_key.as_str(), nonce.to_string().as_str());
 
     let sign_msg = match service_id {
         "bittrex" => url.clone(),
@@ -70,7 +70,7 @@ fn get_req(service_id: &str) -> Request {
 
     let mut req = Request::new(Method::Get, url.parse().unwrap());
 
-    req.headers_mut().set(AccessKey(access_key.to_string()));
+    req.headers_mut().set(AccessKey(api_key.to_string()));
     req.headers_mut().set(Nonce(nonce));
     req.headers_mut().set(AccessSignature(sign.clone()));
     req.headers_mut().set(ApiSign(sign));
@@ -130,7 +130,7 @@ struct Config {
 #[derive(Deserialize)]
 struct AccessConfig {
     id: String,
-    access_key: String,
+    api_key: String,
     secret_key: String,
 }
 
