@@ -16,7 +16,7 @@ use std::io::{self, Write};
 use std::io::prelude::*;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use sha2::Sha256;
+use sha2::{Sha256, Sha512};
 use hmac::{Hmac, Mac};
 use hex::ToHex;
 
@@ -27,6 +27,7 @@ use hyper::client::{Client, Request};
 header! { (AccessKey, "ACCESS-KEY") => [String] }
 header! { (Nonce, "ACCESS-NONCE") => [u64] }
 header! { (AccessSignature, "ACCESS-SIGNATURE") => [String] }
+header! { (ApiSign, "apisign") => [String] }
 use hyper_tls::HttpsConnector;
 
 fn main() {
@@ -36,7 +37,7 @@ fn main() {
     let client = Client::configure()
         .connector(HttpsConnector::new(4, &handle).unwrap())
         .build(&handle);
-    let req = get_req("coincheck");
+    let req = get_req("bittrex");
     let work = client.request(req).and_then(|res| {
         println!("Response: {}", res.status());
 
@@ -57,47 +58,67 @@ fn get_req(service_id: &str) -> Request {
     let access_key = access_config.access_key;
     let secret_key = access_config.secret_key;
 
-    let url = get_url(service_id);
+    let url = get_url(service_id, access_key.as_str(), nonce.to_string().as_str());
 
-    let body = "";
-    let msg = format!("{}{}{}", nonce.to_string().as_str(), url, body);
+    let sign_msg = match service_id {
+        "bittrex" => url.clone(),
+        "coincheck" => format!("{}{}{}", nonce.to_string().as_str(), url, ""),
+        _ => String::new(),
+    };
 
-    let sign = get_sign(service_id, secret_key.as_bytes(), msg.as_str());
+    let sign = get_sign(service_id, secret_key.as_bytes(), sign_msg.as_str());
 
     let mut req = Request::new(Method::Get, url.parse().unwrap());
 
     req.headers_mut().set(AccessKey(access_key.to_string()));
     req.headers_mut().set(Nonce(nonce));
-    req.headers_mut().set(AccessSignature(sign));
+    req.headers_mut().set(AccessSignature(sign.clone()));
+    req.headers_mut().set(ApiSign(sign));
 
     return req
 }
 
-fn get_url(service_id: &str) -> String {
+fn get_url(service_id: &str, api_key: &str, nonce: &str) -> String {
 
     let mut ret: String = String::new();
     
     ret.push_str("https://");
-    ret.push_str(match service_id {
-        "coincheck" => "coincheck.com/api/accounts/balance",
-        _ => "",
-    });
+    let url_body = match service_id {
+        "bittrex" => format!("{}?apikey={}&nonce={}", 
+            "bittrex.com/api/v1.1/account/getbalances",
+            api_key,
+            nonce,
+        ),
+        "coincheck" => "coincheck.com/api/accounts/balance".to_string(),
+        _ => String::new(),
+    };
+    ret.push_str(url_body.as_str());
 
     return ret
 }
 
-fn get_sign(service_id: &str, secret_key: &[u8], msg: &str) -> String {
+fn get_sign(service_id: &str, secret_key: &[u8], sign_msg: &str) -> String {
 
     let mut ret = String::new();
 
-    let mut hmac = match service_id {
-        "coincheck" => Hmac::<Sha256>::new(secret_key).unwrap(),
-        _ => Hmac::new(secret_key).unwrap(),
+    match service_id {
+        "bittrex" => {
+            let mut hmac = Hmac::<Sha512>::new(secret_key).unwrap();
+            hmac.input(sign_msg.as_bytes());
+            hmac.result().code().write_hex(&mut ret).unwrap();
+        }
+        "coincheck" => {
+            let mut hmac = Hmac::<Sha256>::new(secret_key).unwrap();
+            hmac.input(sign_msg.as_bytes());
+            hmac.result().code().write_hex(&mut ret).unwrap();
+        }
+        _ => {
+            let mut hmac = Hmac::<Sha256>::new(secret_key).unwrap();
+            hmac.input(sign_msg.as_bytes());
+            hmac.result().code().write_hex(&mut ret).unwrap();
+        }
     };
-    
-    hmac.input(msg.as_bytes());
-    hmac.result().code().write_hex(&mut ret).unwrap();
-    
+
     return ret
 }
 
