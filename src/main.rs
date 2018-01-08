@@ -41,8 +41,11 @@ fn main() {
     let access_configs = get_access_config();   
     for access_config in access_configs {
         let req = get_req(access_config);
-        let work = client.request(req).and_then(|res| {
-            println!("Response: {}", res.status());
+        if req.is_none() {
+            continue;
+        }
+        let work = client.request(req.unwrap()).and_then(|res| {
+            println!("Response: {}\n", res.status());
 
             res.body().for_each(|chunk| {
                 io::stdout()
@@ -54,13 +57,19 @@ fn main() {
     };
 }
 
-fn get_req(access_config: AccessConfig) -> Request {
-
-    let nonce = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
+fn get_req(access_config: AccessConfig) -> Option<Request> {
 
     let service_id = access_config.service_id.as_str();
     let api_key = access_config.api_key;
     let secret_key = access_config.secret_key;
+
+    if service_id.is_empty() || api_key.is_empty() || secret_key.is_empty() {
+        println!("Skip because of insufficient params...\n[\"{}\"]\n", service_id);
+        return None
+    }
+    println!("Starts to connect...\n[\"{}\"]\n", service_id);
+
+    let nonce = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
 
     let url = get_url(service_id, api_key.as_str(), nonce.to_string().as_str());
 
@@ -86,7 +95,7 @@ fn get_req(access_config: AccessConfig) -> Request {
         _ => { }
     };
 
-    return req
+    return Some(req)
 }
 
 fn get_url(service_id: &str, api_key: &str, nonce: &str) -> String {
