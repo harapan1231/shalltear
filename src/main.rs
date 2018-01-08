@@ -123,11 +123,7 @@ fn get_sign(service_id: &str, secret_key: &[u8], sign_msg: &str) -> String {
             hmac.input(sign_msg.as_bytes());
             hmac.result().code().write_hex(&mut ret).unwrap()
         }
-        _ => {
-            let mut hmac = Hmac::<Sha256>::new(secret_key).unwrap();
-            hmac.input(sign_msg.as_bytes());
-            hmac.result().code().write_hex(&mut ret).unwrap()
-        }
+        _ => { }
     };
 
     return ret
