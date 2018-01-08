@@ -25,7 +25,7 @@ use tokio_core::reactor::Core;
 use hyper::Method;
 use hyper::client::{Client, Request};
 header! { (AccessKey, "ACCESS-KEY") => [String] }
-header! { (AccessNonce, "ACCESS-NONCE") => [u64] }
+header! { (Nonce, "ACCESS-NONCE") => [u64] }
 header! { (AccessSignature, "ACCESS-SIGNATURE") => [String] }
 use hyper_tls::HttpsConnector;
 
@@ -51,15 +51,17 @@ fn main() {
 
 fn get_req(service_id: &str) -> Request {
 
+    let nonce = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
+
     let access_config = get_access_config(service_id).unwrap();
-    let url = get_url(service_id);
-    let body = "";
     let access_key = access_config.access_key;
     let secret_key = access_config.secret_key;
 
-    let access_nonce = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
+    let url = get_url(service_id);
 
-    let msg = format!("{}{}{}", access_nonce.to_string().as_str(), url, body);
+    let body = "";
+
+    let msg = format!("{}{}{}", nonce.to_string().as_str(), url, body);
     let mut hmac = Hmac::<Sha256>::new(secret_key.as_bytes()).unwrap();
     hmac.input(msg.as_bytes());
     let mut access_signature = String::new();
@@ -68,7 +70,7 @@ fn get_req(service_id: &str) -> Request {
     let mut req = Request::new(Method::Get, url.parse().unwrap());
 
     req.headers_mut().set(AccessKey(access_key.to_string()));
-    req.headers_mut().set(AccessNonce(access_nonce));
+    req.headers_mut().set(Nonce(nonce));
     req.headers_mut().set(AccessSignature(access_signature));
 
     return req
