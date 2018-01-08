@@ -60,18 +60,15 @@ fn get_req(service_id: &str) -> Request {
     let url = get_url(service_id);
 
     let body = "";
-
     let msg = format!("{}{}{}", nonce.to_string().as_str(), url, body);
-    let mut hmac = Hmac::<Sha256>::new(secret_key.as_bytes()).unwrap();
-    hmac.input(msg.as_bytes());
-    let mut access_signature = String::new();
-    hmac.result().code().write_hex(&mut access_signature).unwrap();
+
+    let sign = get_sign(service_id, secret_key.as_bytes(), msg.as_str());
 
     let mut req = Request::new(Method::Get, url.parse().unwrap());
 
     req.headers_mut().set(AccessKey(access_key.to_string()));
     req.headers_mut().set(Nonce(nonce));
-    req.headers_mut().set(AccessSignature(access_signature));
+    req.headers_mut().set(AccessSignature(sign));
 
     return req
 }
@@ -86,6 +83,21 @@ fn get_url(service_id: &str) -> String {
         _ => "",
     });
 
+    return ret
+}
+
+fn get_sign(service_id: &str, secret_key: &[u8], msg: &str) -> String {
+
+    let mut ret = String::new();
+
+    let mut hmac = match service_id {
+        "coincheck" => Hmac::<Sha256>::new(secret_key).unwrap(),
+        _ => Hmac::new(secret_key).unwrap(),
+    };
+    
+    hmac.input(msg.as_bytes());
+    hmac.result().code().write_hex(&mut ret).unwrap();
+    
     return ret
 }
 
