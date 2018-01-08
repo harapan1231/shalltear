@@ -37,24 +37,28 @@ fn main() {
     let client = Client::configure()
         .connector(HttpsConnector::new(4, &handle).unwrap())
         .build(&handle);
-    let req = get_req("bittrex");
-    let work = client.request(req).and_then(|res| {
-        println!("Response: {}", res.status());
+        
+    let access_configs = get_access_config();   
+    for access_config in access_configs {
+        let req = get_req(access_config);
+        let work = client.request(req).and_then(|res| {
+            println!("Response: {}", res.status());
 
-        res.body().for_each(|chunk| {
-            io::stdout()
-                .write_all(&chunk)
-                .map_err(From::from)
-        })
-    });
-    core.run(work).unwrap();
+            res.body().for_each(|chunk| {
+                io::stdout()
+                    .write_all(&chunk)
+                    .map_err(From::from)
+            })
+        });
+        core.run(work).unwrap();
+    };
 }
 
-fn get_req(service_id: &str) -> Request {
+fn get_req(access_config: AccessConfig) -> Request {
 
     let nonce = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
 
-    let access_config = get_access_config(service_id).unwrap();
+    let service_id = access_config.service_id.as_str();
     let api_key = access_config.api_key;
     let secret_key = access_config.secret_key;
 
@@ -105,17 +109,17 @@ fn get_sign(service_id: &str, secret_key: &[u8], sign_msg: &str) -> String {
         "bittrex" => {
             let mut hmac = Hmac::<Sha512>::new(secret_key).unwrap();
             hmac.input(sign_msg.as_bytes());
-            hmac.result().code().write_hex(&mut ret).unwrap();
+            hmac.result().code().write_hex(&mut ret).unwrap()
         }
         "coincheck" => {
             let mut hmac = Hmac::<Sha256>::new(secret_key).unwrap();
             hmac.input(sign_msg.as_bytes());
-            hmac.result().code().write_hex(&mut ret).unwrap();
+            hmac.result().code().write_hex(&mut ret).unwrap()
         }
         _ => {
             let mut hmac = Hmac::<Sha256>::new(secret_key).unwrap();
             hmac.input(sign_msg.as_bytes());
-            hmac.result().code().write_hex(&mut ret).unwrap();
+            hmac.result().code().write_hex(&mut ret).unwrap()
         }
     };
 
@@ -129,17 +133,17 @@ struct Config {
 
 #[derive(Deserialize)]
 struct AccessConfig {
-    id: String,
+    service_id: String,
     api_key: String,
     secret_key: String,
 }
 
-fn get_access_config(id: &str) -> Option<AccessConfig> {
+fn get_access_config() -> Vec<AccessConfig> {
 
     let mut file = File::open("Shalltear.toml").expect("File not found");
     let mut contents = String::new();
     file.read_to_string(&mut contents).expect("Something went wrong reading the file");
 
     let config: Config = toml::from_str(contents.as_str()).expect("Failed to create toml string");
-    config.access_configs.into_iter().find(|x| x.id == id)
+    return config.access_configs
 }
