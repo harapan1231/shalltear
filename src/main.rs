@@ -74,10 +74,17 @@ fn get_req(access_config: AccessConfig) -> Request {
 
     let mut req = Request::new(Method::Get, url.parse().unwrap());
 
-    req.headers_mut().set(AccessKey(api_key.to_string()));
-    req.headers_mut().set(Nonce(nonce));
-    req.headers_mut().set(AccessSignature(sign.clone()));
-    req.headers_mut().set(ApiSign(sign));
+    match service_id {
+        "bittrex" => {
+            req.headers_mut().set(ApiSign(sign));
+        }
+        "coincheck" => {
+            req.headers_mut().set(AccessKey(api_key.to_string()));
+            req.headers_mut().set(Nonce(nonce));
+            req.headers_mut().set(AccessSignature(sign.clone()));
+        }
+        _ => { }
+    };
 
     return req
 }
