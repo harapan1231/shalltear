@@ -52,26 +52,39 @@ fn main() {
 fn get_req(service_id: &str) -> Request {
 
     let access_config = get_access_config(service_id).unwrap();
-    let uri = format!("https://{}{}", access_config.host, "/api/accounts/balance");
+    let url = get_url(service_id);
     let body = "";
     let access_key = access_config.access_key;
     let secret_key = access_config.secret_key;
 
     let access_nonce = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
 
-    let msg = format!("{}{}{}", access_nonce.to_string().as_str(), uri, body);
+    let msg = format!("{}{}{}", access_nonce.to_string().as_str(), url, body);
     let mut hmac = Hmac::<Sha256>::new(secret_key.as_bytes()).unwrap();
     hmac.input(msg.as_bytes());
     let mut access_signature = String::new();
     hmac.result().code().write_hex(&mut access_signature).unwrap();
 
-    let mut req = Request::new(Method::Get, uri.parse().unwrap());
+    let mut req = Request::new(Method::Get, url.parse().unwrap());
 
     req.headers_mut().set(AccessKey(access_key.to_string()));
     req.headers_mut().set(AccessNonce(access_nonce));
     req.headers_mut().set(AccessSignature(access_signature));
 
     return req
+}
+
+fn get_url(service_id: &str) -> String {
+
+    let mut ret: String = String::new();
+    
+    ret.push_str("https://");
+    ret.push_str(match service_id {
+        "coincheck" => "coincheck.com/api/accounts/balance",
+        _ => "",
+    });
+
+    return ret
 }
 
 #[derive(Deserialize)]
@@ -82,7 +95,6 @@ struct Config {
 #[derive(Deserialize)]
 struct AccessConfig {
     id: String,
-    host: String,
     access_key: String,
     secret_key: String,
 }
